@@ -1548,6 +1548,10 @@ class Builder
      */
     public function chunk($count, callable $callback)
     {
+        if ($this->getOrderBys() === null) {
+            $this->orderBy('id', 'asc');
+        }
+
         $results = $this->forPage($page = 1, $count)->get();
 
         while (count($results) > 0) {
@@ -1564,6 +1568,18 @@ class Builder
         }
 
         return true;
+    }
+
+    /**
+     * Returns the currently set ordering
+     *
+     * @return array|null
+     */
+    public function getOrderBys()
+    {
+        $property = $this->unions ? 'unionOrders' : 'orders';
+
+        return $this->{$property};
     }
 
     /**
