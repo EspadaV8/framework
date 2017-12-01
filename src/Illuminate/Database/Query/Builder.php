@@ -59,7 +59,7 @@ class Builder
     /**
      * An aggregate function and column to be run.
      *
-     * @var array
+     * @var array|null
      */
     public $aggregate;
 
@@ -68,7 +68,7 @@ class Builder
      *
      * @var array
      */
-    public $columns;
+    public $columns = [];
 
     /**
      * Indicates if the query returns distinct results.
@@ -89,47 +89,47 @@ class Builder
      *
      * @var array
      */
-    public $joins;
+    public $joins = [];
 
     /**
      * The where constraints for the query.
      *
      * @var array
      */
-    public $wheres;
+    public $wheres = [];
 
     /**
      * The groupings for the query.
      *
      * @var array
      */
-    public $groups;
+    public $groups = [];
 
     /**
      * The having constraints for the query.
      *
      * @var array
      */
-    public $havings;
+    public $havings = [];
 
     /**
      * The orderings for the query.
      *
      * @var array
      */
-    public $orders;
+    public $orders = [];
 
     /**
      * The maximum number of records to return.
      *
-     * @var int
+     * @var int|null
      */
     public $limit;
 
     /**
      * The number of records to skip.
      *
-     * @var int
+     * @var int|null
      */
     public $offset;
 
@@ -138,19 +138,19 @@ class Builder
      *
      * @var array
      */
-    public $unions;
+    public $unions = [];
 
     /**
      * The maximum number of union records to return.
      *
-     * @var int
+     * @var int|null
      */
     public $unionLimit;
 
     /**
      * The number of union records to skip.
      *
-     * @var int
+     * @var int|null
      */
     public $unionOffset;
 
@@ -159,7 +159,7 @@ class Builder
      *
      * @var array
      */
-    public $unionOrders;
+    public $unionOrders = [];
 
     /**
      * Indicates whether row locking is being used.
@@ -289,7 +289,7 @@ class Builder
     {
         $column = is_array($column) ? $column : func_get_args();
 
-        $this->columns = array_merge((array) $this->columns, $column);
+        $this->columns = array_merge($this->columns, $column);
 
         return $this;
     }
@@ -1065,7 +1065,7 @@ class Builder
     public function groupBy()
     {
         foreach (func_get_args() as $arg) {
-            $this->groups = array_merge((array) $this->groups, is_array($arg) ? $arg : [$arg]);
+            $this->groups = array_merge($this->groups, is_array($arg) ? $arg : [$arg]);
         }
 
         return $this;
@@ -1146,7 +1146,7 @@ class Builder
      */
     public function orderBy($column, $direction = 'asc')
     {
-        $property = $this->unions ? 'unionOrders' : 'orders';
+        $property = $this->getProperty('order');
         $direction = strtolower($direction) == 'asc' ? 'asc' : 'desc';
 
         $this->{$property}[] = compact('column', 'direction');
@@ -1185,7 +1185,7 @@ class Builder
      */
     public function orderByRaw($sql, $bindings = [])
     {
-        $property = $this->unions ? 'unionOrders' : 'orders';
+        $property = $this->getProperty('order');
 
         $type = 'raw';
 
@@ -1204,7 +1204,7 @@ class Builder
      */
     public function offset($value)
     {
-        $property = $this->unions ? 'unionOffset' : 'offset';
+        $property = $this->getProperty('offest');
 
         $this->$property = max(0, $value);
 
@@ -1230,7 +1230,7 @@ class Builder
      */
     public function limit($value)
     {
-        $property = $this->unions ? 'unionLimit' : 'limit';
+        $property = $this->getProperty('limit');
 
         if ($value >= 0) {
             $this->$property = $value;
@@ -1401,7 +1401,7 @@ class Builder
      */
     public function get($columns = ['*'])
     {
-        if (is_null($this->columns)) {
+        if (count($this->columns) === 0) {
             $this->columns = $columns;
         }
 
@@ -1494,7 +1494,7 @@ class Builder
 
         $this->restoreFieldsForCount();
 
-        if (isset($this->groups)) {
+        if (count($this->groups) > 0) {
             return count($results);
         }
 
@@ -1951,7 +1951,7 @@ class Builder
      */
     public function mergeWheres($wheres, $bindings)
     {
-        $this->wheres = array_merge((array) $this->wheres, (array) $wheres);
+        $this->wheres = array_merge($this->wheres, (array) $wheres);
 
         $this->bindings['where'] = array_values(array_merge($this->bindings['where'], (array) $bindings));
     }
@@ -2121,5 +2121,20 @@ class Builder
         $className = get_class($this);
 
         throw new BadMethodCallException("Call to undefined method {$className}::{$method}()");
+    }
+
+    /**
+     * Get the correct property based on the number of unions
+     *
+     * @param  string $property
+     * @return string
+     */
+    private function getProperty($property)
+    {
+        if (count($this->unions) > 0) {
+            return 'union' . ucfirst($property);
+        }
+
+        return $property;
     }
 }
